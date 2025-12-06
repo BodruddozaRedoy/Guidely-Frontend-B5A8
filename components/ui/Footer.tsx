@@ -12,7 +12,7 @@ const Footer = () => {
               <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center">
                 <MapPin className="w-5 h-5 text-primary-foreground" />
               </div>
-              <span className="font-display font-bold text-xl">LocalGuide</span>
+              <span className="font-display font-bold text-xl">Guidely</span>
             </Link>
             <p className="text-muted-foreground text-sm leading-relaxed">
               Connecting travelers with passionate local experts for authentic, unforgettable experiences.
