@@ -56,7 +56,6 @@ export default function TourDetails() {
 
   if (!tour) {
     return (
-      <Layout>
         <div className="container mx-auto px-4 py-20 text-center">
           <h1 className="text-2xl font-display font-bold mb-4">
             Tour not found
@@ -64,8 +63,7 @@ export default function TourDetails() {
           <Link href="/explore">
             <Button>Browse all tours</Button>
           </Link>
-        </div>
-      </Layout>
+      </div>
     );
   }
 
@@ -207,7 +205,7 @@ export default function TourDetails() {
               {/* Itinerary */}
               <div className="mb-8">
                 <h3 className="font-display font-semibold text-xl mb-4">
-                  What you'll do
+                What you&apos;ll do
                 </h3>
 
                 <div className="space-y-4">
@@ -397,7 +395,7 @@ export default function TourDetails() {
                 </Button>
 
                 <p className="text-center text-sm text-muted-foreground mt-4">
-                  You won't be charged yet
+                You won&apos;t be charged yet
                 </p>
               </div>
             </div>
