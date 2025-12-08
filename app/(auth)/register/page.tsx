@@ -19,7 +19,7 @@ const Register = () => {
   const searchParams = useSearchParams();
   const { register } = useAuth();
 
-  const initialRole = (searchParams.get("role") as UserRole) || "tourist";
+  const initialRole = (searchParams.get("role") as UserRole) || "TOURIST";
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -36,12 +36,13 @@ const Register = () => {
     setIsLoading(true);
 
     try {
+      console.log(name, email, password, role)
       // FIXED: correct argument order for backend
       await register(name, email, password, role);
 
       toast.success(`Welcome to Guidely! Your ${role} account is ready.`);
 
-      router.push(role === "guide" ? "/dashboard" : "/");
+      router.push(role === "GUIDE" ? "/dashboard" : "/");
     } catch (error: any) {
       const message =
         error?.message || "Registration failed. Please try again.";
@@ -104,17 +105,17 @@ const Register = () => {
               >
                 {/* Tourist Option */}
                 <Label
-                  htmlFor="tourist"
+                  htmlFor="TOURIST"
                   className={`flex flex-col items-center gap-3 p-4 rounded-xl border-2 cursor-pointer transition-all ${
-                    role === "tourist"
+                    role === "TOURIST"
                       ? "border-primary bg-primary/5"
                       : "border-border hover:border-primary/50"
                   }`}
                 >
-                  <RadioGroupItem value="tourist" id="tourist" className="sr-only" />
+                  <RadioGroupItem value="TOURIST" id="TOURIST" className="sr-only" />
                   <Compass
                     className={`w-8 h-8 ${
-                      role === "tourist" ? "text-primary" : "text-muted-foreground"
+                      role === "TOURIST" ? "text-primary" : "text-muted-foreground"
                     }`}
                   />
                   <div className="text-center">
@@ -129,7 +130,7 @@ const Register = () => {
                 <Label
                   htmlFor="guide"
                   className={`flex flex-col items-center gap-3 p-4 rounded-xl border-2 cursor-pointer transition-all ${
-                    role === "guide"
+                    role === "GUIDE"
                       ? "border-primary bg-primary/5"
                       : "border-border hover:border-primary/50"
                   }`}
@@ -137,7 +138,7 @@ const Register = () => {
                   <RadioGroupItem value="guide" id="guide" className="sr-only" />
                   <Map
                     className={`w-8 h-8 ${
-                      role === "guide" ? "text-primary" : "text-muted-foreground"
+                      role === "GUIDE" ? "text-primary" : "text-muted-foreground"
                     }`}
                   />
                   <div className="text-center">

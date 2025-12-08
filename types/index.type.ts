@@ -1,4 +1,4 @@
-export type UserRole = 'tourist' | 'guide' | 'admin';
+export type UserRole = "TOURIST" | "GUIDE" | "ADMIN";
 export type BookingStatus = "pending" | "confirmed" | "completed" | "cancelled";
 
 export interface User {
@@ -13,7 +13,7 @@ export interface User {
 }
 
 export interface Guide extends User {
-  role: "guide";
+  role: "GUIDE";
   expertise: string[];
   dailyRate: number;
   rating: number;
