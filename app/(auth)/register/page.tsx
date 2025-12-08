@@ -19,8 +19,7 @@ const Register = () => {
   const searchParams = useSearchParams();
   const { register } = useAuth();
 
-  const initialRole =
-    (searchParams.get("role") as UserRole) || "tourist";
+  const initialRole = (searchParams.get("role") as UserRole) || "tourist";
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -29,18 +28,25 @@ const Register = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
-  const handleSubmit = async (e:any) => {
+  // ---------------------------
+  // SUBMIT HANDLER (REAL BACKEND)
+  // ---------------------------
+  const handleSubmit = async (e: any) => {
     e.preventDefault();
     setIsLoading(true);
 
     try {
-      await register(email, password, name, role);
+      // FIXED: correct argument order for backend
+      await register(name, email, password, role);
 
-      toast.success(`Welcome to LocalGuide! Your ${role} account is ready.`);
+      toast.success(`Welcome to Guidely! Your ${role} account is ready.`);
 
       router.push(role === "guide" ? "/dashboard" : "/");
-    } catch (error) {
-      toast.error("Something went wrong. Please try again.");
+    } catch (error: any) {
+      const message =
+        error?.message || "Registration failed. Please try again.";
+
+      toast.error(message);
     } finally {
       setIsLoading(false);
     }
@@ -64,7 +70,7 @@ const Register = () => {
               Start your journey today
             </h2>
             <p className="text-lg text-primary-foreground/80">
-              Whether youre exploring or guiding, amazing experiences await you.
+              Whether you&apos;re exploring or guiding, amazing experiences await you.
             </p>
           </div>
         </div>
@@ -78,7 +84,7 @@ const Register = () => {
             <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center">
               <MapPin className="w-5 h-5 text-primary-foreground" />
             </div>
-                      <span className="font-display font-bold text-xl">Guidely</span>
+            <span className="font-display font-bold text-xl">Guidely</span>
           </Link>
 
           <h1 className="font-display font-bold text-3xl mb-2">Create account</h1>
@@ -113,7 +119,9 @@ const Register = () => {
                   />
                   <div className="text-center">
                     <p className="font-medium">Explore</p>
-                    <p className="text-xs text-muted-foreground">Find amazing tours</p>
+                    <p className="text-xs text-muted-foreground">
+                      Find amazing tours
+                    </p>
                   </div>
                 </Label>
 
@@ -134,7 +142,9 @@ const Register = () => {
                   />
                   <div className="text-center">
                     <p className="font-medium">Guide</p>
-                    <p className="text-xs text-muted-foreground">Share your city</p>
+                    <p className="text-xs text-muted-foreground">
+                      Share your city
+                    </p>
                   </div>
                 </Label>
               </RadioGroup>
