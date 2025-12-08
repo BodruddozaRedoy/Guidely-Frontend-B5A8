@@ -11,13 +11,12 @@ import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { MapPin, Mail, Lock, User, Eye, EyeOff, Compass, Map } from "lucide-react";
 import { toast } from "sonner";
-import { useAuth } from "@/context/AuthContext";
+import { signIn } from "next-auth/react";
 import { UserRole } from "@/types/index.type";
 
 const Register = () => {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { register } = useAuth();
 
   const initialRole = (searchParams.get("role") as UserRole) || "TOURIST";
 
@@ -29,20 +28,43 @@ const Register = () => {
   const [isLoading, setIsLoading] = useState(false);
 
   // ---------------------------
-  // SUBMIT HANDLER (REAL BACKEND)
+  // SUBMIT HANDLER (NextAuth)
   // ---------------------------
   const handleSubmit = async (e: any) => {
     e.preventDefault();
     setIsLoading(true);
 
     try {
-      console.log(name, email, password, role)
-      // FIXED: correct argument order for backend
-      await register(name, email, password, role);
+      // Register user via API
+      const res = await fetch("/api/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, email, password, role }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || "Registration failed");
+      }
+
+      // After successful registration, sign in the user
+      const result = await signIn("credentials", {
+        email,
+        password,
+        redirect: false,
+      });
+
+      if (result?.error) {
+        toast.error("Account created but sign-in failed. Please try logging in.");
+        router.push("/login");
+        return;
+      }
 
       toast.success(`Welcome to Guidely! Your ${role} account is ready.`);
 
       router.push(role === "GUIDE" ? "/dashboard" : "/");
+      router.refresh();
     } catch (error: any) {
       const message =
         error?.message || "Registration failed. Please try again.";
@@ -128,14 +150,14 @@ const Register = () => {
 
                 {/* Guide Option */}
                 <Label
-                  htmlFor="guide"
+                  htmlFor="GUIDE"
                   className={`flex flex-col items-center gap-3 p-4 rounded-xl border-2 cursor-pointer transition-all ${
                     role === "GUIDE"
                       ? "border-primary bg-primary/5"
                       : "border-border hover:border-primary/50"
                   }`}
                 >
-                  <RadioGroupItem value="guide" id="guide" className="sr-only" />
+                  <RadioGroupItem value="GUIDE" id="GUIDE" className="sr-only" />
                   <Map
                     className={`w-8 h-8 ${
                       role === "GUIDE" ? "text-primary" : "text-muted-foreground"

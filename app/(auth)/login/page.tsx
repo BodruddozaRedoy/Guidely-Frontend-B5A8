@@ -7,13 +7,14 @@ import { Label } from "@/components/ui/label";
 import { MapPin, Mail, Lock, Eye, EyeOff } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
-import { useRouter } from "next/navigation";
-import { useAuth } from "@/context/AuthContext";
+import { useRouter, useSearchParams } from "next/navigation";
+import { signIn } from "next-auth/react";
 import { toast } from "sonner";
 
 const Login = () => {
   const router = useRouter();
-  const { login } = useAuth();
+  const searchParams = useSearchParams();
+  const callbackUrl = searchParams.get("callbackUrl") || "/";
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -21,18 +22,27 @@ const Login = () => {
   const [isLoading, setIsLoading] = useState(false);
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const handleSubmit = async (e:any) => {
+  const handleSubmit = async (e: any) => {
     e.preventDefault();
     setIsLoading(true);
 
     try {
-      await login(email, password);
+      const result = await signIn("credentials", {
+        email,
+        password,
+        redirect: false,
+      });
+
+      if (result?.error) {
+        toast.error("Invalid email or password.");
+        return;
+      }
 
       toast.success("Welcome back!");
-
-      router.push("/");
+      router.push(callbackUrl);
+      router.refresh();
     } catch (error) {
-      toast.error("Invalid email or password.");
+      toast.error("An error occurred. Please try again.");
     } finally {
       setIsLoading(false);
     }
