@@ -69,7 +69,7 @@ const HeroSection = () => {
                 <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
                 <Input
                   placeholder="Where are you going?"
-                  className="pl-12 h-14 text-lg border-0 bg-muted/50 focus-visible:ring-1"
+                  className="pl-12 h-12 text-lg border-0 bg-muted/50 focus-visible:ring-1"
                   value={destination}
                   onChange={(e) => setDestination(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && handleSearch()}

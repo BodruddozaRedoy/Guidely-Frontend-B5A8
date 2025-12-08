@@ -1,4 +1,5 @@
 export type UserRole = 'tourist' | 'guide' | 'admin';
+export type BookingStatus = "pending" | "confirmed" | "completed" | "cancelled";
 
 export interface User {
   id: string;
@@ -12,7 +13,7 @@ export interface User {
 }
 
 export interface Guide extends User {
-  role: 'guide';
+  role: "guide";
   expertise: string[];
   dailyRate: number;
   rating: number;
@@ -39,6 +40,7 @@ export interface Tour {
   totalReviews: number;
   location: string;
   featured?: boolean;
+  active?: boolean;
 }
 
 export interface Booking {
@@ -50,7 +52,7 @@ export interface Booking {
   guideId: string;
   guide?: Guide;
   date: Date;
-  status: 'pending' | 'confirmed' | 'completed' | 'cancelled';
+  status: BookingStatus;
   totalPrice: number;
   groupSize: number;
   createdAt: Date;
@@ -74,4 +76,11 @@ export interface SearchFilters {
   priceMax?: number;
   language?: string;
   date?: Date;
+}
+
+export interface WishlistItem {
+  id: string;
+  tourId: string;
+  tour: Tour;
+  addedAt: Date;
 }
