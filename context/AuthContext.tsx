@@ -14,6 +14,7 @@ interface AuthContextType {
   user: User | null;
   token: string | null;
   isAuthenticated: boolean;
+  authLoading: boolean; // ⬅️ HERE
   login: (email: string, password: string) => Promise<void>;
   register: (
     name: string,
@@ -30,11 +31,12 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
+  const [authLoading, setAuthLoading] = useState(true); // ⬅️ HERE
 
   const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
 
   // -------------------------------------------------
-  // Restore Auth (safe for React)
+  // INITIAL LOAD / RESTORE FROM LOCALSTORAGE
   // -------------------------------------------------
   useEffect(() => {
     const savedToken = localStorage.getItem("token");
@@ -46,6 +48,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setUser(JSON.parse(savedUser));
       });
     }
+
+    // Finished loading auth state
+    setAuthLoading(false); // ⬅️ HERE
   }, []);
 
   // -------------------------------------------------
@@ -91,7 +96,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     if (!res.ok) throw new Error("Registration failed");
 
     const result = await res.json();
-
     const newUser: User = result.data.user;
     const accessToken: string = result.data.token;
 
@@ -105,8 +109,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   // -------------------------------------------------
-  // LOGIN WITH GOOGLE (OPTIONAL)
-  // Called by Login/Register page after Google API returns success
+  // GOOGLE LOGIN
   // -------------------------------------------------
   const loginWithGoogle = (googleUser: User, googleToken: string) => {
     startTransition(() => {
@@ -136,6 +139,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       value={{
         user,
         token,
+        authLoading,     // ⬅️ Provide loading state
         isAuthenticated: !!user,
         login,
         register,
