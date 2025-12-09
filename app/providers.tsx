@@ -2,7 +2,6 @@
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useState } from "react";
-import { SessionProvider } from "next-auth/react";
 import { Toaster } from "sonner";
 import { AuthProvider } from "@/context/AuthContext";
 
@@ -13,9 +12,7 @@ export default function Providers({ children }: { children: React.ReactNode }) {
   return (
     <AuthProvider>
       <QueryClientProvider client={queryClient}>
-        <SessionProvider>
-          {children}
-        </SessionProvider>
+        {children}
 
         <Toaster richColors closeButton />
       </QueryClientProvider>

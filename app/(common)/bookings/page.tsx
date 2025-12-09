@@ -1,3 +1,4 @@
+"use client"
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -107,6 +108,7 @@ const Bookings = () => {
                         <Image
                           src={booking.tour.images[0]}
                           alt={booking.tour.title}
+                          fill
                           className="w-full h-full object-cover"
                         />
                       </Link>
@@ -211,6 +213,7 @@ const Bookings = () => {
                         <Image
                           src={booking.tour.images[0]}
                           alt={booking.tour.title}
+                          fill
                           className="w-full h-full object-cover"
                         />
                       </Link>

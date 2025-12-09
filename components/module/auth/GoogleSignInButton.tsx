@@ -1,15 +1,17 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-// components/module/auth/GoogleSignInButton.tsx
-'use client';
+"use client";
 
 import { useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { WholeWord } from "lucide-react";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
+import { useAuth } from "@/context/AuthContext"; // <-- IMPORTANT
 
 declare global {
-  interface Window { google: any; }
+  interface Window {
+    google: any;
+  }
 }
 
 interface Props {
@@ -21,12 +23,12 @@ interface Props {
 export default function GoogleSignInButton({
   callbackUrl = "/",
   text = "Sign in with Google",
-  className = ""
+  className = "",
 }: Props) {
   const router = useRouter();
+  const { loginWithGoogle } = useAuth(); // <-- Use AuthContext
 
   useEffect(() => {
-    // ensure google accounts lib is available
     if (!window || !window.google) return;
 
     window.google.accounts.id.initialize({
@@ -34,55 +36,65 @@ export default function GoogleSignInButton({
       callback: async (response: any) => {
         try {
           const id_token = response?.credential;
-          console.log("[GSI] full response:", response);
-          console.log("[GSI] id_token length:", id_token?.length);
-          console.log("[GSI] id_token preview:", id_token?.slice?.(0, 60));
 
           if (!id_token) {
-            toast.error("Google sign-in failed (no token received)");
+            toast.error("Google login failed — no token received.");
             return;
           }
 
-          const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL ?? ""}/api/auth/google`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ id_token }),
-          });
+          // Debug (optional)
+          console.log("[GSI] token:", id_token.slice(0, 50));
+
+          const res = await fetch(
+            `${process.env.NEXT_PUBLIC_API_URL}/api/auth/google`,
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ id_token }),
+            }
+          );
 
           const data = await res.json();
-          console.log("[CLIENT] /api/auth/google response:", data, "status:", res.status);
+          console.log("[CLIENT] /google response →", data);
 
           if (!res.ok) {
-            toast.error(data?.message || data?.error || "Google sign-in failed");
+            toast.error(data?.message || "Google sign-in failed.");
             return;
           }
 
-          // store token & user in localStorage
-          if (data?.token) localStorage.setItem("token", data.token);
-          if (data?.user) localStorage.setItem("user", JSON.stringify(data.user));
+          const token = data?.data?.token;
+          const user = data?.data?.user;
 
-          toast.success("Signed in with Google");
+          if (!token || !user) {
+            toast.error("Invalid Google response.");
+            return;
+          }
+
+          // ⬇️ Use AuthContext instead of manually writing localStorage
+          loginWithGoogle(user, token);
+
+          toast.success("Signed in with Google!");
           router.push(callbackUrl);
         } catch (err) {
-          console.error("[CLIENT] Google sign-in error:", err);
-          toast.error("Google sign-in failed. Check console.");
+          console.error("Google login error:", err);
+          toast.error("Google login failed. Check console.");
         }
       },
     });
 
-    const el = document.getElementById("g_id_signin");
-    if (el) {
-      window.google.accounts.id.renderButton(el, { theme: "outline", size: "large", width: "100%" });
+    const button = document.getElementById("g_id_signin_btn");
+    if (button) {
+      window.google.accounts.id.renderButton(button, {
+        theme: "outline",
+        size: "large",
+        width: "100%",
+      });
     }
-  }, [router, callbackUrl]);
+  }, [router, callbackUrl, loginWithGoogle]);
 
   return (
-    <div id="g_id_signin" className={className} style={{ width: "100%" }}>
-      <noscript>
-        <Button variant="outline" className={`flex items-center gap-2 ${className}`} onClick={() => window.open('https://accounts.google.com/', '_blank')}>
-          <WholeWord/> {text}
-        </Button>
-      </noscript>
+    <div className={className} style={{ width: "100%" }}>
+      <div id="g_id_signin_btn"></div>
     </div>
   );
 }

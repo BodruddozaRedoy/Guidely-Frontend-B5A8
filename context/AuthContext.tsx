@@ -21,6 +21,7 @@ interface AuthContextType {
     password: string,
     role: UserRole
   ) => Promise<void>;
+  loginWithGoogle: (user: User, token: string) => void;
   logout: () => void;
 }
 
@@ -30,18 +31,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
 
-  const BASE_URL =
-    process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000/api";
+  const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
 
   // -------------------------------------------------
-  // Restore Auth (React-safe version)
+  // Restore Auth (safe for React)
   // -------------------------------------------------
   useEffect(() => {
     const savedToken = localStorage.getItem("token");
     const savedUser = localStorage.getItem("user");
 
     if (savedToken && savedUser) {
-      // Defer state update to avoid synchronous state setting
       startTransition(() => {
         setToken(savedToken);
         setUser(JSON.parse(savedUser));
@@ -53,15 +52,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   // LOGIN
   // -------------------------------------------------
   const login = async (email: string, password: string) => {
-    const res = await fetch(`${BASE_URL}/auth/login`, {
+    const res = await fetch(`${BASE_URL}/api/auth/login`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email, password }),
     });
 
-    if (!res.ok) {
-      throw new Error("Login failed");
-    }
+    if (!res.ok) throw new Error("Login failed");
 
     const result = await res.json();
     const loggedUser: User = result.data.user;
@@ -85,24 +82,40 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     password: string,
     role: UserRole
   ) => {
-    const res = await fetch(`${BASE_URL}/auth/register`, {
+    const res = await fetch(`${BASE_URL}/api/auth/register`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ name, email, password, role }),
     });
 
-    if (!res.ok) {
-      throw new Error("Registration failed");
-    }
+    if (!res.ok) throw new Error("Registration failed");
 
     const result = await res.json();
-    const newUser: User = result.data;
+
+    const newUser: User = result.data.user;
+    const accessToken: string = result.data.token;
 
     startTransition(() => {
       setUser(newUser);
+      setToken(accessToken);
     });
 
     localStorage.setItem("user", JSON.stringify(newUser));
+    localStorage.setItem("token", accessToken);
+  };
+
+  // -------------------------------------------------
+  // LOGIN WITH GOOGLE (OPTIONAL)
+  // Called by Login/Register page after Google API returns success
+  // -------------------------------------------------
+  const loginWithGoogle = (googleUser: User, googleToken: string) => {
+    startTransition(() => {
+      setUser(googleUser);
+      setToken(googleToken);
+    });
+
+    localStorage.setItem("user", JSON.stringify(googleUser));
+    localStorage.setItem("token", googleToken);
   };
 
   // -------------------------------------------------
@@ -126,6 +139,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         isAuthenticated: !!user,
         login,
         register,
+        loginWithGoogle,
         logout,
       }}
     >

@@ -43,9 +43,9 @@ const Navbar = () => {
     if (!user) return [];
 
     switch (user.role) {
-      case "guide":
+      case "GUIDE":
         return [{ href: "/dashboard", label: "Dashboard", icon: LayoutDashboard }];
-      case "admin":
+      case "ADMIN":
         return [{ href: "/admin", label: "Admin Dashboard", icon: LayoutDashboard }];
       default:
         return [{ href: "/bookings", label: "My Bookings", icon: Heart }];

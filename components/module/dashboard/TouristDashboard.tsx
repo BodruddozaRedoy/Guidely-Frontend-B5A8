@@ -70,6 +70,7 @@ const TouristDashboard = () => {
       <Image
         src={booking.tour?.images[0] || ""}
         alt={booking.tour?.title || ""}
+        fill
         className="w-full md:w-32 h-40 md:h-24 object-cover rounded-lg"
       />
       <div className="flex-1">
@@ -240,6 +241,7 @@ const TouristDashboard = () => {
               {wishlist.length > 0 ? wishlist.map((item) => (
                 <div key={item.id} className="flex flex-col md:flex-row gap-4 p-4 bg-muted/50 rounded-xl">
                   <Image
+                    fill
                     src={item.tour.images[0]}
                     alt={item.tour.title}
                     className="w-full md:w-32 h-40 md:h-24 object-cover rounded-lg"

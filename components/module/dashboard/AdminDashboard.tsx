@@ -336,6 +336,7 @@ const AdminDashboard = () => {
                                     <Image
                                         src={tour.images[0]}
                                         alt={tour.title}
+                                        fill
                                         className="w-full md:w-20 h-32 md:h-14 object-cover rounded-lg"
                                     />
                                     <div className="flex-1">
