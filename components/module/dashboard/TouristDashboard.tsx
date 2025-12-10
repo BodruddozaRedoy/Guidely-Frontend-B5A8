@@ -150,8 +150,8 @@ const TouristDashboard = () => {
       className="flex flex-col md:flex-row gap-4 p-4 bg-muted/50 rounded-xl"
     >
       <Image
-        src={b.listing.images[0]}
-        alt={b.listing.title}
+        src={b.listing?.images?.[0] ?? "/placeholder.jpg"}
+        alt={b.listing?.title ?? "Tour image"}
         width={120}
         height={90}
         className="rounded-lg object-cover"
@@ -160,12 +160,14 @@ const TouristDashboard = () => {
       <div className="flex-1">
         <div className="flex items-start justify-between mb-2">
           <div>
-            <h3 className="font-medium">{b.listing.title}</h3>
+            <h3 className="font-medium">{b.listing?.title ?? "Unknown Tour"}</h3>
+
             <p className="text-sm text-muted-foreground flex items-center gap-1">
               <MapPin className="w-3 h-3" />
-              {b.listing.city}, {b.listing.country}
+              {b.listing?.city ?? "N/A"}, {b.listing?.country ?? ""}
             </p>
           </div>
+
           {getStatusBadge(b.status)}
         </div>
 
@@ -177,16 +179,17 @@ const TouristDashboard = () => {
           <span>{b.totalPrice} USD</span>
         </div>
 
+        {/* GUIDE INFO */}
         <div className="flex items-center gap-3">
           <Avatar>
-            <AvatarImage src={b.guide.image || ""} />
-            <AvatarFallback>{b.guide.name[0]}</AvatarFallback>
+            <AvatarImage src={b.guide?.image ?? ""} />
+            <AvatarFallback>{b.guide?.name?.[0] ?? "?"}</AvatarFallback>
           </Avatar>
           <div>
-            <p className="text-sm font-medium">{b.guide.name}</p>
+            <p className="text-sm font-medium">{b.guide?.name ?? "Unknown Guide"}</p>
             <p className="text-xs text-muted-foreground flex items-center gap-1">
               <Star className="w-3 h-3 fill-accent text-accent" />
-              4.9
+              {b.guide?.rating ?? "4.9"}
             </p>
           </div>
         </div>
@@ -194,9 +197,7 @@ const TouristDashboard = () => {
 
       <div className="flex flex-row md:flex-col gap-2">
         <Link href={`/tours/${b.listingId}`}>
-          <Button variant="outline" size="sm">
-            View Tour
-          </Button>
+          <Button variant="outline" size="sm">View Tour</Button>
         </Link>
 
         {allowCancel && b.status === "PENDING" && (
@@ -218,6 +219,7 @@ const TouristDashboard = () => {
       </div>
     </div>
   );
+
 
   // ------------------------------------------------
   // LOADING STATE
@@ -274,7 +276,7 @@ const TouristDashboard = () => {
         <DashboardStatCard
           icon={<MapPin className="w-5 h-5 text-primary" />}
           title="Cities Visited"
-          value={new Set(past.map((b) => b.listing.city)).size}
+          value={new Set(past.map((b) => b.listing?.city)).size}
         />
       </div>
 
@@ -408,13 +410,13 @@ const WishlistCard = ({
       <div className="flex items-center gap-4 text-sm text-muted-foreground">
         <div className="flex items-center gap-1">
           <Clock className="w-3 h-3" />
-          {item.tour.duration}
+          {item.tour.durationDays}
         </div>
         <div className="flex items-center gap-1">
           <Star className="w-3 h-3 fill-accent text-accent" />
           {item.tour.rating}
         </div>
-        <span className="font-medium">${item.tour.price}</span>
+        <span className="font-medium">${item.tour.tourFee}</span>
       </div>
     </div>
 
