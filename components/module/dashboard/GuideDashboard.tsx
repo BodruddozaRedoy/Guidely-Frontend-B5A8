@@ -71,7 +71,7 @@ const GuideDashboard = () => {
                     fetch(`${BASE_URL}/api/listings/guide/${guideId}`, {
                         headers: { Authorization: `Bearer ${token}` },
                     }),
-                    fetch(`${BASE_URL}/api/bookings/guide/${guideId}`, {
+                    fetch(`${BASE_URL}/api/bookings/${guideId}`, {
                         headers: { Authorization: `Bearer ${token}` },
                     }),
                 ]);
