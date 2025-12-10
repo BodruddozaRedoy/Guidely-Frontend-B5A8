@@ -13,8 +13,8 @@ import React, {
 interface AuthContextType {
   user: User | null;
   token: string | null;
+  authLoading: boolean;
   isAuthenticated: boolean;
-  authLoading: boolean; // ⬅️ HERE
   login: (email: string, password: string) => Promise<void>;
   register: (
     name: string,
@@ -31,7 +31,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
-  const [authLoading, setAuthLoading] = useState(true); // ⬅️ HERE
+  const [authLoading, setAuthLoading] = useState(true);
 
   const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
 
@@ -49,8 +49,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       });
     }
 
-    // Finished loading auth state
-    setAuthLoading(false); // ⬅️ HERE
+    // Avoid synchronous setState inside effect
+    queueMicrotask(() => setAuthLoading(false));
   }, []);
 
   // -------------------------------------------------
@@ -66,6 +66,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     if (!res.ok) throw new Error("Login failed");
 
     const result = await res.json();
+
     const loggedUser: User = result.data.user;
     const accessToken: string = result.data.token;
 
@@ -96,8 +97,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     if (!res.ok) throw new Error("Registration failed");
 
     const result = await res.json();
-    const newUser: User = result.data.user;
-    const accessToken: string = result.data.token;
+
+    const newUser: User = result.data;
+    console.log("newUser", newUser)
+    const accessToken: string = result.data.token; // MUST EXIST IN BACKEND
 
     startTransition(() => {
       setUser(newUser);
@@ -139,7 +142,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       value={{
         user,
         token,
-        authLoading,     // ⬅️ Provide loading state
+        authLoading,
         isAuthenticated: !!user,
         login,
         register,
@@ -152,9 +155,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   );
 };
 
-// -------------------------------------------------
-// Hook
-// -------------------------------------------------
 export const useAuth = () => {
   const ctx = useContext(AuthContext);
   if (!ctx) throw new Error("useAuth must be used inside AuthProvider");

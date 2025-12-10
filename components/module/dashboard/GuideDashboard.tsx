@@ -1,133 +1,182 @@
-"use client"
-import { useState } from 'react';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { mockTours, mockBookings, getGuideBookings, getGuideTours } from '@/data/mockData';
+/* eslint-disable @typescript-eslint/no-explicit-any */
+"use client";
+
+import { useEffect, useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
     Plus, Calendar, DollarSign, Clock, CheckCircle, XCircle,
     MapPin, Star, Edit, Trash2, Eye, ToggleLeft, ToggleRight
-} from 'lucide-react';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { useAuth } from '@/context/AuthContext';
-import { toast } from 'sonner';
-import Link from 'next/link';
+} from "lucide-react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { useAuth } from "@/context/AuthContext";
+import { toast } from "sonner";
+import Link from "next/link";
+
+
+
+// ---------------------------------------------------
+// UI HELPERS
+// ---------------------------------------------------
+const getStatusBadge = (status: string) => {
+    switch (status) {
+        case "PENDING":
+            return (
+                <Badge variant="outline" className="gap-1 border-accent text-accent">
+                    <Clock className="w-3 h-3" /> Pending
+                </Badge>
+            );
+        case "CONFIRMED":
+            return (
+                <Badge className="gap-1 bg-secondary text-secondary-foreground">
+                    <CheckCircle className="w-3 h-3" /> Confirmed
+                </Badge>
+            );
+        case "COMPLETED":
+            return (
+                <Badge variant="outline" className="gap-1 text-muted-foreground">
+                    <CheckCircle className="w-3 h-3" /> Completed
+                </Badge>
+            );
+        case "CANCELLED":
+            return (
+                <Badge variant="destructive" className="gap-1">
+                    <XCircle className="w-3 h-3" /> Cancelled
+                </Badge>
+            );
+    }
+};
 
 const GuideDashboard = () => {
-    const { user } = useAuth();
-    const [activeTab, setActiveTab] = useState('overview');
+    const { user, token } = useAuth();
+    const guideId = user?.id;
 
-    // Mock data - in real app, this would come from API based on guide ID
-    const guideId = user?.id || '1';
-    const myTours = getGuideTours(guideId);
-    const myBookings = getGuideBookings(guideId);
+    const [activeTab, setActiveTab] = useState("overview");
+    const [tours, setTours] = useState<any[]>([]);
+    const [bookings, setBookings] = useState<any[]>([]);
+    const [loading, setLoading] = useState(true);
 
-    const pendingBookings = myBookings.filter(b => b.status === 'pending');
-    const confirmedBookings = myBookings.filter(b => b.status === 'confirmed');
-    const completedBookings = myBookings.filter(b => b.status === 'completed');
+    const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
+
+    // ---------------------------------------------------
+    // LOAD REAL DATA
+    // ---------------------------------------------------
+    useEffect(() => {
+        if (!guideId || !token) return;
+
+        const fetchData = async () => {
+            try {
+                const [tourRes, bookingRes] = await Promise.all([
+                    fetch(`${BASE_URL}/api/listings/guide/${guideId}`, {
+                        headers: { Authorization: `Bearer ${token}` },
+                    }),
+                    fetch(`${BASE_URL}/api/bookings/guide/${guideId}`, {
+                        headers: { Authorization: `Bearer ${token}` },
+                    }),
+                ]);
+
+                const tourData = await tourRes.json();
+                const bookingData = await bookingRes.json();
+
+                setTours(tourData?.data || []);
+                setBookings(bookingData?.data || []);
+            } catch (err) {
+                console.error(err);
+                toast.error("Failed to load dashboard data");
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchData();
+    }, [guideId, token]);
+
+    if (loading) {
+        return (
+            <div className="min-h-[60vh] flex items-center justify-center">
+                <p className="text-muted-foreground">Loading dashboard...</p>
+            </div>
+        );
+    }
+
+    // ---------------------------------------------------
+    // STATS (REAL DATA)
+    // ---------------------------------------------------
+    const pendingBookings = bookings.filter((b) => b.status === "PENDING");
+    const confirmedBookings = bookings.filter((b) => b.status === "CONFIRMED");
+    const completedBookings = bookings.filter((b) => b.status === "COMPLETED");
 
     const stats = {
-        totalBookings: myBookings.length,
+        totalBookings: bookings.length,
         pendingBookings: pendingBookings.length,
         totalRevenue: completedBookings.reduce((sum, b) => sum + b.totalPrice, 0),
         thisMonth: completedBookings
-            .filter(b => new Date(b.date).getMonth() === new Date().getMonth())
+            .filter((b) => new Date(b.createdAt).getMonth() === new Date().getMonth())
             .reduce((sum, b) => sum + b.totalPrice, 0),
-        rating: 4.9,
-        activeTours: myTours.filter(t => t.active).length,
+        rating:
+            tours.length > 0
+                ? (
+                    tours.reduce((sum, t) => sum + (t.avgRating || 0), 0) / tours.length
+                ).toFixed(1)
+                : "0.0",
+        activeTours: tours.filter((t) => t.isActive).length,
     };
 
-    const getStatusBadge = (status: string) => {
-        switch (status) {
-            case 'pending':
-                return <Badge variant="outline" className="gap-1 border-accent text-accent"><Clock className="w-3 h-3" />Pending</Badge>;
-            case 'confirmed':
-                return <Badge className="gap-1 bg-secondary text-secondary-foreground"><CheckCircle className="w-3 h-3" />Confirmed</Badge>;
-            case 'completed':
-                return <Badge variant="outline" className="gap-1 text-muted-foreground"><CheckCircle className="w-3 h-3" />Completed</Badge>;
-            case 'cancelled':
-                return <Badge variant="destructive" className="gap-1"><XCircle className="w-3 h-3" />Cancelled</Badge>;
-            default:
-                return null;
+
+
+    const handleToggleTourStatus = async (tourId: string, currentStatus: boolean) => {
+        try {
+            const res = await fetch(`${BASE_URL}/api/listings/${tourId}/toggle`, {
+                method: "PATCH",
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                },
+            });
+
+            if (!res.ok) throw new Error("Failed to update status");
+
+            setTours((prev) =>
+                prev.map((t) =>
+                    t.id === tourId ? { ...t, isActive: !currentStatus } : t
+                )
+            );
+
+            toast.success(currentStatus ? "Tour deactivated" : "Tour activated");
+        } catch (error) {
+            toast.error("Could not update tour status");
         }
     };
 
-    const handleAcceptBooking = (bookingId: string) => {
-        toast("Booking Accepted", {
-            description: "The booking has been confirmed.",
-        });
-    };
-
-    const handleDeclineBooking = (bookingId: string) => {
-        toast("Booking Declined", {
-            description: "The booking has been declined.",
-        });
-    };
-
-    const handleToggleTourStatus = (tourId: string, currentStatus: boolean) => {
-        toast(currentStatus ? "Tour Deactivated" : "Tour Activated", {
-            description: currentStatus ? "The tour is now hidden from search." : "The tour is now visible to travelers.",
-        });
-    };
-
+    // ---------------------------------------------------
+    // RENDER UI
+    // ---------------------------------------------------
     return (
         <div className="space-y-8">
             {/* Header */}
             <div className="flex flex-col md:flex-row md:items-center justify-between">
                 <div>
                     <h1 className="font-display font-bold text-3xl mb-2">
-                        Welcome back, {user?.name?.split(' ')[0] || 'Guide'}!
+                        Welcome back, {user?.name?.split(" ")[0] || "Guide"}!
                     </h1>
                     <p className="text-muted-foreground">
                         Manage your tours, bookings, and earnings.
                     </p>
                 </div>
+
                 <Link href="/dashboard/listings/new">
                     <Button className="gap-2 mt-4 md:mt-0">
-                        <Plus className="w-4 h-4" />
-                        Create New Tour
+                        <Plus className="w-4 h-4" /> Create New Tour
                     </Button>
                 </Link>
             </div>
 
             {/* Stats */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                <div className="bg-card rounded-2xl p-6 shadow-soft">
-                    <div className="flex items-center gap-3 mb-3">
-                        <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
-                            <Calendar className="w-5 h-5 text-primary" />
-                        </div>
-                        <span className="text-sm text-muted-foreground">Total Bookings</span>
-                    </div>
-                    <p className="font-display font-bold text-3xl">{stats.totalBookings}</p>
-                </div>
-                <div className="bg-card rounded-2xl p-6 shadow-soft">
-                    <div className="flex items-center gap-3 mb-3">
-                        <div className="w-10 h-10 rounded-xl bg-accent/10 flex items-center justify-center">
-                            <Clock className="w-5 h-5 text-accent" />
-                        </div>
-                        <span className="text-sm text-muted-foreground">Pending</span>
-                    </div>
-                    <p className="font-display font-bold text-3xl">{stats.pendingBookings}</p>
-                </div>
-                <div className="bg-card rounded-2xl p-6 shadow-soft">
-                    <div className="flex items-center gap-3 mb-3">
-                        <div className="w-10 h-10 rounded-xl bg-secondary/10 flex items-center justify-center">
-                            <DollarSign className="w-5 h-5 text-secondary" />
-                        </div>
-                        <span className="text-sm text-muted-foreground">Total Revenue</span>
-                    </div>
-                    <p className="font-display font-bold text-3xl">${stats.totalRevenue}</p>
-                </div>
-                <div className="bg-card rounded-2xl p-6 shadow-soft">
-                    <div className="flex items-center gap-3 mb-3">
-                        <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
-                            <Star className="w-5 h-5 text-primary" />
-                        </div>
-                        <span className="text-sm text-muted-foreground">Rating</span>
-                    </div>
-                    <p className="font-display font-bold text-3xl">{stats.rating}</p>
-                </div>
+                <StatCard icon={<Calendar />} label="Total Bookings" value={stats.totalBookings} />
+                <StatCard icon={<Clock />} label="Pending" value={stats.pendingBookings} />
+                <StatCard icon={<DollarSign />} label="Total Revenue" value={`$${stats.totalRevenue}`} />
+                <StatCard icon={<Star />} label="Rating" value={stats.rating} />
             </div>
 
             {/* Tabs */}
@@ -138,174 +187,111 @@ const GuideDashboard = () => {
                     <TabsTrigger value="listings">My Listings</TabsTrigger>
                 </TabsList>
 
+                {/* ---------------- OVERVIEW ---------------- */}
                 <TabsContent value="overview" className="space-y-6">
-                    {/* Pending Requests */}
-                    <div className="bg-card rounded-2xl p-6 shadow-soft">
-                        <h2 className="font-display font-semibold text-xl mb-4">Pending Requests</h2>
-                        <div className="space-y-4">
-                            {pendingBookings.length > 0 ? pendingBookings.map((booking) => (
-                                <div key={booking.id} className="flex flex-col md:flex-row md:items-center justify-between p-4 bg-muted/50 rounded-xl gap-4">
-                                    <div className="flex items-center gap-4">
-                                        <Avatar>
-                                            <AvatarImage src={booking.tourist?.avatar} />
-                                            <AvatarFallback>{booking.tourist?.name?.charAt(0)}</AvatarFallback>
-                                        </Avatar>
-                                        <div>
-                                            <p className="font-medium">{booking.tourist?.name}</p>
-                                            <p className="text-sm text-muted-foreground">{booking.tour?.title}</p>
-                                            <p className="text-sm text-muted-foreground">
-                                                {new Date(booking.date).toLocaleDateString()} • {booking.groupSize} guests • ${booking.totalPrice}
-                                            </p>
-                                        </div>
-                                    </div>
-                                    <div className="flex gap-2">
-                                        <Button size="sm" variant="outline" onClick={() => handleDeclineBooking(booking.id)}>
-                                            Decline
-                                        </Button>
-                                        <Button size="sm" onClick={() => handleAcceptBooking(booking.id)}>
-                                            Accept
-                                        </Button>
-                                    </div>
-                                </div>
-                            )) : (
-                                <p className="text-muted-foreground text-center py-8">No pending requests</p>
-                            )}
-                        </div>
-                    </div>
+                    {/* Pending */}
+                    <SectionCard title="Pending Requests">
+                        {pendingBookings.length > 0 ? (
+                            pendingBookings.map(RenderBooking)
+                        ) : (
+                            <Empty text="No pending requests" />
+                        )}
+                    </SectionCard>
 
-                    {/* Upcoming Tours */}
-                    <div className="bg-card rounded-2xl p-6 shadow-soft">
-                        <h2 className="font-display font-semibold text-xl mb-4">Upcoming Tours</h2>
-                        <div className="space-y-4">
-                            {confirmedBookings.length > 0 ? confirmedBookings.map((booking) => (
-                                <div key={booking.id} className="flex flex-col md:flex-row md:items-center justify-between p-4 bg-muted/50 rounded-xl gap-4">
-                                    <div className="flex items-center gap-4">
-                                        <Avatar>
-                                            <AvatarImage src={booking.tourist?.avatar} />
-                                            <AvatarFallback>{booking.tourist?.name?.charAt(0)}</AvatarFallback>
-                                        </Avatar>
-                                        <div>
-                                            <p className="font-medium">{booking.tourist?.name}</p>
-                                            <p className="text-sm text-muted-foreground">{booking.tour?.title}</p>
-                                            <p className="text-sm text-muted-foreground">
-                                                {new Date(booking.date).toLocaleDateString()} • {booking.groupSize} guests
-                                            </p>
-                                        </div>
-                                    </div>
-                                    {getStatusBadge(booking.status)}
-                                </div>
-                            )) : (
-                                <p className="text-muted-foreground text-center py-8">No upcoming tours</p>
-                            )}
-                        </div>
-                    </div>
+                    {/* Upcoming */}
+                    <SectionCard title="Upcoming Tours">
+                        {confirmedBookings.length > 0 ? (
+                            confirmedBookings.map(RenderBooking)
+                        ) : (
+                            <Empty text="No upcoming tours" />
+                        )}
+                    </SectionCard>
                 </TabsContent>
 
+                {/* ---------------- BOOKINGS ---------------- */}
                 <TabsContent value="bookings">
-                    <div className="bg-card rounded-2xl p-6 shadow-soft">
-                        <h2 className="font-display font-semibold text-xl mb-4">All Bookings</h2>
-                        <div className="space-y-4">
-                            {myBookings.length > 0 ? myBookings.map((booking) => (
-                                <div key={booking.id} className="flex flex-col md:flex-row md:items-center justify-between p-4 bg-muted/50 rounded-xl gap-4">
-                                    <div className="flex items-center gap-4">
-                                        <Avatar>
-                                            <AvatarImage src={booking.tourist?.avatar} />
-                                            <AvatarFallback>{booking.tourist?.name?.charAt(0)}</AvatarFallback>
-                                        </Avatar>
-                                        <div>
-                                            <p className="font-medium">{booking.tourist?.name}</p>
-                                            <p className="text-sm text-muted-foreground">{booking.tour?.title}</p>
-                                            <p className="text-sm text-muted-foreground">
-                                                {new Date(booking.date).toLocaleDateString()} • {booking.groupSize} guests • ${booking.totalPrice}
-                                            </p>
-                                        </div>
-                                    </div>
-                                    {getStatusBadge(booking.status)}
-                                </div>
-                            )) : (
-                                <p className="text-muted-foreground text-center py-8">No bookings yet</p>
-                            )}
-                        </div>
-                    </div>
+                    <SectionCard title="All Bookings">
+                        {bookings.length > 0 ? (
+                            bookings.map(RenderBooking)
+                        ) : (
+                            <Empty text="No bookings yet" />
+                        )}
+                    </SectionCard>
                 </TabsContent>
 
+                {/* ---------------- LISTINGS ---------------- */}
                 <TabsContent value="listings">
-                    <div className="bg-card rounded-2xl p-6 shadow-soft">
-                        <div className="flex items-center justify-between mb-6">
-                            <h2 className="font-display font-semibold text-xl">My Tours ({myTours.length})</h2>
-                            <Link href="/dashboard/listings/new">
-                                <Button className="gap-2">
-                                    <Plus className="w-4 h-4" />
-                                    Add Tour
-                                </Button>
-                            </Link>
-                        </div>
-                        <div className="space-y-4">
-                            {myTours.length > 0 ? myTours.map((tour) => (
-                                <div key={tour.id} className="flex flex-col md:flex-row items-start md:items-center gap-4 p-4 bg-muted/50 rounded-xl">
+                    <SectionCard title={`My Tours (${tours.length})`}>
+                        {tours.length > 0 ? (
+                            tours.map((tour) => (
+                                <div
+                                    key={tour.id}
+                                    className="flex flex-col md:flex-row items-start md:items-center gap-4 p-4 bg-muted/50 rounded-xl"
+                                >
                                     <img
-                                        src={tour.images[0]}
+                                        src={tour.images?.[0]}
                                         alt={tour.title}
                                         className="w-full md:w-24 h-32 md:h-16 object-cover rounded-lg"
                                     />
+
                                     <div className="flex-1">
                                         <div className="flex items-center gap-2 mb-1">
                                             <h3 className="font-medium">{tour.title}</h3>
-                                            {tour.active ? (
+                                            {tour.isActive ? (
                                                 <Badge className="bg-secondary/20 text-secondary text-xs">Active</Badge>
                                             ) : (
                                                 <Badge variant="outline" className="text-xs">Inactive</Badge>
                                             )}
                                         </div>
+
                                         <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
                                             <span className="flex items-center gap-1">
                                                 <MapPin className="w-3 h-3" />
-                                                {tour.location}
+                                                {tour.city}, {tour.country}
                                             </span>
-                                            <span>${tour.price}/person</span>
+                                            <span>${tour.tourFee}/person</span>
                                             <span className="flex items-center gap-1">
                                                 <Star className="w-3 h-3 fill-accent text-accent" />
-                                                {tour.rating}
+                                                {tour.avgRating || "0.0"}
                                             </span>
                                         </div>
                                     </div>
+
                                     <div className="flex gap-2 w-full md:w-auto">
-                                        <Link href={`/tours/${tour.id}`} className="flex-1 md:flex-none">
-                                            <Button variant="outline" size="icon" className="w-full md:w-10">
+                                        <Link href={`/tours/${tour.id}`}>
+                                            <Button variant="outline" size="icon">
                                                 <Eye className="w-4 h-4" />
                                             </Button>
                                         </Link>
-                                        <Link href={`/dashboard/listings/${tour.id}/edit`} className="flex-1 md:flex-none">
-                                            <Button variant="outline" size="icon" className="w-full md:w-10">
+
+                                        <Link href={`/dashboard/listings/${tour.id}/edit`}>
+                                            <Button variant="outline" size="icon">
                                                 <Edit className="w-4 h-4" />
                                             </Button>
                                         </Link>
+
                                         <Button
                                             variant="outline"
                                             size="icon"
-                                            className="flex-1 md:flex-none w-full md:w-10"
-                                            onClick={() => handleToggleTourStatus(tour.id, tour.active || false)}
+                                            onClick={() => handleToggleTourStatus(tour.id, tour.isActive)}
                                         >
-                                            {tour.active ? <ToggleRight className="w-4 h-4 text-secondary" /> : <ToggleLeft className="w-4 h-4" />}
+                                            {tour.isActive ? (
+                                                <ToggleRight className="w-4 h-4 text-secondary" />
+                                            ) : (
+                                                <ToggleLeft className="w-4 h-4" />
+                                            )}
                                         </Button>
-                                        <Button variant="outline" size="icon" className="flex-1 md:flex-none w-full md:w-10 text-destructive hover:text-destructive">
+
+                                        <Button variant="outline" size="icon" className="text-destructive">
                                             <Trash2 className="w-4 h-4" />
                                         </Button>
                                     </div>
                                 </div>
-                            )) : (
-                                <div className="text-center py-8">
-                                    <p className="text-muted-foreground mb-4">You haven&apos;t created any tours yet</p>
-                                    <Link href="/dashboard/listings/new">
-                                        <Button className="gap-2">
-                                            <Plus className="w-4 h-4" />
-                                            Create Your First Tour
-                                        </Button>
-                                    </Link>
-                                </div>
-                            )}
-                        </div>
-                    </div>
+                            ))
+                        ) : (
+                            <Empty text="No tours yet" />
+                        )}
+                    </SectionCard>
                 </TabsContent>
             </Tabs>
         </div>
@@ -313,3 +299,53 @@ const GuideDashboard = () => {
 };
 
 export default GuideDashboard;
+
+/* -----------------------------------------
+   REUSABLE COMPONENTS
+------------------------------------------ */
+
+const StatCard = ({ icon, label, value }: any) => (
+    <div className="bg-card rounded-2xl p-6 shadow-soft">
+        <div className="flex items-center gap-3 mb-3">
+            <div className="w-10 h-10 rounded-xl bg-muted flex items-center justify-center">{icon}</div>
+            <span className="text-sm text-muted-foreground">{label}</span>
+        </div>
+        <p className="font-display font-bold text-3xl">{value}</p>
+    </div>
+);
+
+const SectionCard = ({ title, children }: any) => (
+    <div className="bg-card rounded-2xl p-6 shadow-soft">
+        <h2 className="font-display font-semibold text-xl mb-4">{title}</h2>
+        <div className="space-y-4">{children}</div>
+    </div>
+);
+
+const Empty = ({ text }: any) => (
+    <p className="text-muted-foreground text-center py-8">{text}</p>
+);
+
+const RenderBooking = (booking: any) => (
+    <div
+        key={booking.id}
+        className="flex flex-col md:flex-row md:items-center justify-between p-4 bg-muted/50 rounded-xl gap-4"
+    >
+        <div className="flex items-center gap-4">
+            <Avatar>
+                <AvatarImage src={booking.tourist?.image} />
+                <AvatarFallback>{booking.tourist?.name?.charAt(0)}</AvatarFallback>
+            </Avatar>
+
+            <div>
+                <p className="font-medium">{booking.tourist?.name}</p>
+                <p className="text-sm text-muted-foreground">{booking.listing?.title}</p>
+                <p className="text-sm text-muted-foreground">
+                    {new Date(booking.createdAt).toLocaleDateString()} • $
+                    {booking.totalPrice}
+                </p>
+            </div>
+        </div>
+
+        {getStatusBadge(booking.status)}
+    </div>
+);
