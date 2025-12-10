@@ -40,7 +40,7 @@ const TouristDashboard = () => {
   // ------------------------------------------------
   const fetchBookings = async () => {
     try {
-      const res = await fetch(`${BASE_URL}/api/bookings/tourist/${user?.id}`, {
+      const res = await fetch(`${BASE_URL}/api/bookings/${user?.id}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
