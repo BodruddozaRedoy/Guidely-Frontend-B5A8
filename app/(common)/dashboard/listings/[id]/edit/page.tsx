@@ -1,6 +1,11 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useParams, useRouter } from "next/navigation";
+import Image from "next/image";
+import Link from "next/link";
+
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -12,364 +17,382 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+
 import { categories } from "@/data/mockData";
 import { ArrowLeft, Plus, X, Upload, MapPin } from "lucide-react";
-import Image from "next/image";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
+import { useAuth } from "@/context/AuthContext";
 
-export default function CreateTour() {
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
+
+export default function EditTourPage() {
+  const { id } = useParams();
   const router = useRouter();
-  const { user, isAuthenticated } = useAuth();
+  const { user, token } = useAuth();
 
+  const [loading, setLoading] = useState(true);
+
+  // ---------- FORM STATE ----------
   const [formData, setFormData] = useState({
     title: "",
     description: "",
-    price: "",
-    duration: "",
+    tourFee: "",
+    durationDays: "",
     maxGroupSize: "",
     meetingPoint: "",
     category: "",
-    location: "",
+    city: "",
+    country: "",
   });
 
-  const [itinerary, setItinerary] = useState<string[]>([""]);
+  const [itinerary, setItinerary] = useState<string[]>([]);
   const [images, setImages] = useState<string[]>([]);
   const [imageUrl, setImageUrl] = useState("");
 
-  if (!isAuthenticated || user?.role !== "guide") {
-    return (
-        <div className="min-h-[60vh] flex flex-col items-center justify-center">
-          <h1 className="font-display font-bold text-2xl mb-4">
-            Access Denied
-          </h1>
-          <p className="text-muted-foreground mb-6">
-            Only guides can create tours.
-          </p>
-          <Link href="/dashboard">
-            <Button>Go to Dashboard</Button>
-          </Link>
-        </div>
-    );
-  }
+  // ------------------------------------------------------
+  // LOAD EXISTING LISTING
+  // ------------------------------------------------------
+  const fetchListing = async () => {
+    try {
+      const res = await fetch(`${BASE_URL}/api/listings/${id}`);
+      const result = await res.json();
 
-  const handleInputChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
-  ) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
+      if (!res.ok) {
+        toast.error("Unable to load listing");
+        return;
+      }
+
+      const l = result.data;
+
+      // Prefill form
+      setFormData({
+        title: l.title,
+        description: l.description,
+        tourFee: String(l.tourFee),
+        durationDays: String(l.durationDays),
+        maxGroupSize: String(l.maxGroupSize),
+        meetingPoint: l.meetingPoint || "",
+        category: l.category,
+        city: l.city,
+        country: l.country || "",
+      });
+
+      setImages(l.images || []);
+      setItinerary(
+        l.itinerary
+          ? l.itinerary.split("|").map((i: string) => i.trim())
+          : [""]
+      );
+
+      setLoading(false);
+    } catch (err) {
+      console.error(err);
+      toast.error("Error loading listing");
+    }
   };
 
-  const handleItineraryChange = (index: number, value: string) => {
+  useEffect(() => {
+    if (id) fetchListing();
+  }, [id]);
+
+  // ------------------------------------------------------
+  // FORM HANDLERS
+  // ------------------------------------------------------
+  const handleChange = (e: any) => {
+    setFormData({ ...formData, [e.target.name]: e.target.value });
+  };
+
+  const handleItineraryChange = (i: number, v: string) => {
     const updated = [...itinerary];
-    updated[index] = value;
+    updated[i] = v;
     setItinerary(updated);
   };
 
-  const addItineraryItem = () => {
-    setItinerary((prev) => [...prev, ""]);
-  };
-
-  const removeItineraryItem = (index: number) => {
-    if (itinerary.length > 1) {
-      setItinerary((prev) => prev.filter((_, i) => i !== index));
-    }
-  };
+  const addItinerary = () => setItinerary([...itinerary, ""]);
+  const removeItinerary = (i: number) =>
+    setItinerary(itinerary.filter((_, idx) => idx !== i));
 
   const addImage = () => {
-    if (imageUrl.trim()) {
-      setImages((prev) => [...prev, imageUrl.trim()]);
-      setImageUrl("");
-    }
+    if (!imageUrl.trim()) return;
+    setImages([...images, imageUrl.trim()]);
+    setImageUrl("");
   };
 
-  const removeImage = (index: number) => {
-    setImages((prev) => prev.filter((_, i) => i !== index));
-  };
+  const removeImage = (i: number) =>
+    setImages(images.filter((_, idx) => idx !== i));
 
-  const handleSubmit = (e: React.FormEvent) => {
+  // ------------------------------------------------------
+  // SUBMIT UPDATE
+  // ------------------------------------------------------
+  const handleUpdate = async (e: any) => {
     e.preventDefault();
 
-    if (!formData.title || !formData.description || !formData.price || !formData.category) {
-      toast("Missing Required Fields",{
-        description: "Please fill in all required fields.",
+    const payload = {
+      title: formData.title,
+      description: formData.description,
+      itinerary: itinerary.join(" | "),
+      tourFee: Number(formData.tourFee),
+      durationDays: Number(formData.durationDays),
+      meetingPoint: formData.meetingPoint,
+      maxGroupSize: Number(formData.maxGroupSize),
+      city: formData.city,
+      country: formData.country,
+      category: formData.category,
+      images,
+    };
+
+    try {
+      const res = await fetch(`${BASE_URL}/api/listings/${id}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(payload),
       });
-      return;
+
+      const result = await res.json();
+
+      if (!res.ok) {
+        toast.error(result.message || "Update failed");
+        return;
+      }
+
+      toast.success("Tour updated successfully!");
+      router.push("/dashboard");
+    } catch (err) {
+      console.error(err);
+      toast.error("Something went wrong");
     }
-
-    toast("Tour Created!",{
-      description: "Your tour has been created successfully.",
-    });
-
-    router.push("/dashboard");
   };
 
+  // ------------------------------------------------------
+  // LOADING STATE
+  // ------------------------------------------------------
+  if (loading)
+    return (
+      <div className="min-h-[60vh] flex items-center justify-center">
+        <p className="text-muted-foreground">Loading tour...</p>
+      </div>
+    );
+
+  // ------------------------------------------------------
+  // UI
+  // ------------------------------------------------------
   return (
-      <div className="min-h-screen bg-muted/30">
-        <div className="container mx-auto px-4 py-8">
+    <div className="min-h-screen bg-muted/30">
+      <div className="container mx-auto px-4 py-8">
+        <Link
+          href="/dashboard"
+          className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground mb-4"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          Back to Dashboard
+        </Link>
 
-          {/* Header */}
-          <div className="mb-8">
-            <Link
-              href="/dashboard"
-              className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground mb-4"
-            >
-              <ArrowLeft className="w-4 h-4" />
-              Back to Dashboard
-            </Link>
+        <h1 className="font-display font-bold text-3xl">Edit Tour</h1>
+        <p className="text-muted-foreground mb-6">
+          Modify the fields below to update your tour listing.
+        </p>
 
-            <h1 className="font-display font-bold text-3xl">Create New Tour</h1>
-            <p className="text-muted-foreground mt-2">
-              Fill in the details to create a new tour listing.
-            </p>
-          </div>
+        <form onSubmit={handleUpdate} className="max-w-3xl space-y-6">
+          <div className="bg-card rounded-2xl p-6 shadow-soft space-y-6">
 
-          {/* FORM */}
-          <form onSubmit={handleSubmit} className="max-w-3xl">
-            <div className="bg-card rounded-2xl p-6 shadow-soft space-y-6">
+            {/* Title */}
+            <div>
+              <Label>Tour Title</Label>
+              <Input
+                name="title"
+                value={formData.title}
+                onChange={handleChange}
+              />
+            </div>
 
-              {/* Basic Info */}
-              <div className="space-y-4">
-                <h2 className="font-display font-semibold text-lg">
-                  Basic Information
-                </h2>
+            {/* Description */}
+            <div>
+              <Label>Description</Label>
+              <Textarea
+                name="description"
+                value={formData.description}
+                rows={4}
+                onChange={handleChange}
+              />
+            </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="title">Tour Title *</Label>
-                  <Input
-                    id="title"
-                    name="title"
-                    placeholder="e.g., Hidden Gems of Downtown Walking Tour"
-                    value={formData.title}
-                    onChange={handleInputChange}
-                    required
-                  />
-                </div>
+            {/* Category + Location */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 
-                <div className="space-y-2">
-                  <Label htmlFor="description">Description *</Label>
-                  <Textarea
-                    id="description"
-                    name="description"
-                    placeholder="Describe what travelers will experience..."
-                    value={formData.description}
-                    onChange={handleInputChange}
-                    rows={4}
-                    required
-                  />
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>Category *</Label>
-                    <Select
-                      value={formData.category}
-                      onValueChange={(value) =>
-                        setFormData((prev) => ({ ...prev, category: value }))
-                      }
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select category" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {categories.map((cat) => (
-                          <SelectItem key={cat.name} value={cat.name}>
-                            {cat.icon} {cat.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label>Location *</Label>
-                    <div className="relative">
-                      <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                      <Input
-                        name="location"
-                        placeholder="City, Country"
-                        value={formData.location}
-                        onChange={handleInputChange}
-                        className="pl-10"
-                        required
-                      />
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Pricing */}
-              <div className="space-y-4 pt-4 border-t">
-                <h2 className="font-display font-semibold text-lg">
-                  Pricing & Details
-                </h2>
-
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="space-y-2">
-                    <Label>Price ($) *</Label>
-                    <Input
-                      name="price"
-                      type="number"
-                      min="1"
-                      value={formData.price}
-                      onChange={handleInputChange}
-                      required
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label>Duration *</Label>
-                    <Input
-                      name="duration"
-                      value={formData.duration}
-                      onChange={handleInputChange}
-                      placeholder="e.g., 4 hours"
-                      required
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label>Max Group Size</Label>
-                    <Input
-                      name="maxGroupSize"
-                      type="number"
-                      min="1"
-                      value={formData.maxGroupSize}
-                      onChange={handleInputChange}
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Meeting Point</Label>
-                  <Input
-                    name="meetingPoint"
-                    placeholder="e.g., Main Square Fountain"
-                    value={formData.meetingPoint}
-                    onChange={handleInputChange}
-                  />
-                </div>
-              </div>
-
-              {/* Itinerary */}
-              <div className="space-y-4 pt-4 border-t">
-                <h2 className="font-display font-semibold text-lg">
-                  Itinerary
-                </h2>
-
-                <p className="text-sm text-muted-foreground">
-                  Add the steps of your tour experience.
-                </p>
-
-                <div className="space-y-3">
-                  {itinerary.map((item, index) => (
-                    <div key={index} className="flex gap-2">
-                      <span className="w-6 h-10 flex items-center justify-center text-muted-foreground">
-                        {index + 1}.
-                      </span>
-
-                      <Input
-                        placeholder={`Step ${index + 1}`}
-                        value={item}
-                        onChange={(e) =>
-                          handleItineraryChange(index, e.target.value)
-                        }
-                      />
-
-                      {itinerary.length > 1 && (
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="icon"
-                          onClick={() => removeItineraryItem(index)}
-                        >
-                          <X className="w-4 h-4" />
-                        </Button>
-                      )}
-                    </div>
-                  ))}
-
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={addItineraryItem}
-                    className="gap-2"
-                  >
-                    <Plus className="w-4 h-4" />
-                    Add Step
-                  </Button>
-                </div>
-              </div>
-
-              {/* Images */}
-              <div className="space-y-4 pt-4 border-t">
-                <h2 className="font-display font-semibold text-lg">Images</h2>
-
-                <p className="text-sm text-muted-foreground">
-                  Add image URLs to showcase your tour.
-                </p>
-
-                <div className="flex gap-2">
-                  <Input
-                    placeholder="Paste image URL..."
-                    value={imageUrl}
-                    onChange={(e) => setImageUrl(e.target.value)}
-                  />
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={addImage}
-                    className="gap-2"
-                  >
-                    <Upload className="w-4 h-4" />
-                    Add
-                  </Button>
-                </div>
-
-                {images.length > 0 && (
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                    {images.map((img, index) => (
-                      <div key={index} className="relative group">
-                        <Image
-                          src={img}
-                          alt="Tour Image"
-                          width={300}
-                          height={200}
-                          className="w-full h-24 object-cover rounded-lg"
-                        />
-
-                        <Button
-                          type="button"
-                          variant="destructive"
-                          size="icon"
-                          className="absolute top-1 right-1 w-6 h-6 opacity-0 group-hover:opacity-100 transition-opacity"
-                          onClick={() => removeImage(index)}
-                        >
-                          <X className="w-3 h-3" />
-                        </Button>
-                      </div>
+              <div>
+                <Label>Category</Label>
+                <Select
+                  value={formData.category}
+                  onValueChange={(v) =>
+                    setFormData({ ...formData, category: v })
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select Category" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {categories.map((c) => (
+                      <SelectItem key={c.name} value={c.name}>
+                        {c.icon} {c.name}
+                      </SelectItem>
                     ))}
-                  </div>
-                )}
+                  </SelectContent>
+                </Select>
               </div>
 
-              {/* Submit */}
-              <div className="flex gap-4 pt-6 border-t">
-                <Button type="submit" className="flex-1">
-                  Create Tour
-                </Button>
+              <div>
+                <Label>City</Label>
+                <Input
+                  name="city"
+                  value={formData.city}
+                  onChange={handleChange}
+                />
+              </div>
 
-                <Link href="/dashboard">
-                  <Button type="button" variant="outline">
-                    Cancel
-                  </Button>
-                </Link>
+            </div>
+
+            {/* Country */}
+            <div>
+              <Label>Country</Label>
+              <Input
+                name="country"
+                value={formData.country}
+                onChange={handleChange}
+              />
+            </div>
+
+            {/* Pricing */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <Label>Tour Fee ($)</Label>
+                <Input
+                  name="tourFee"
+                  type="number"
+                  value={formData.tourFee}
+                  onChange={handleChange}
+                />
+              </div>
+
+              <div>
+                <Label>Duration Days</Label>
+                <Input
+                  name="durationDays"
+                  type="number"
+                  value={formData.durationDays}
+                  onChange={handleChange}
+                />
+              </div>
+
+              <div>
+                <Label>Max Group Size</Label>
+                <Input
+                  name="maxGroupSize"
+                  type="number"
+                  value={formData.maxGroupSize}
+                  onChange={handleChange}
+                />
               </div>
             </div>
-          </form>
-        </div>
+
+            {/* Meeting Point */}
+            <div>
+              <Label>Meeting Point</Label>
+              <Input
+                name="meetingPoint"
+                value={formData.meetingPoint}
+                onChange={handleChange}
+              />
+            </div>
+
+            {/* Itinerary */}
+            <div>
+              <Label className="mb-2 block">Itinerary</Label>
+              {itinerary.map((step, i) => (
+                <div key={i} className="flex gap-2 mb-2">
+                  <Input
+                    value={step}
+                    onChange={(e) => handleItineraryChange(i, e.target.value)}
+                    placeholder={`Step ${i + 1}`}
+                  />
+                  {itinerary.length > 1 && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      onClick={() => removeItinerary(i)}
+                    >
+                      <X className="w-4 h-4" />
+                    </Button>
+                  )}
+                </div>
+              ))}
+              <Button
+                type="button"
+                variant="outline"
+                onClick={addItinerary}
+                className="mt-2"
+              >
+                <Plus className="w-4 h-4" /> Add Step
+              </Button>
+            </div>
+
+            {/* Images */}
+            <div>
+              <Label className="mb-2 block">Images</Label>
+
+              <div className="flex gap-2 mb-3">
+                <Input
+                  value={imageUrl}
+                  onChange={(e) => setImageUrl(e.target.value)}
+                  placeholder="Paste image URL"
+                />
+                <Button type="button" variant="outline" onClick={addImage}>
+                  <Upload className="w-4 h-4" /> Add
+                </Button>
+              </div>
+
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                {images.map((img, i) => (
+                  <div key={i} className="relative group">
+                    <Image
+                      src={img}
+                      alt="Image"
+                      width={300}
+                      height={200}
+                      className="rounded-lg object-cover h-24"
+                    />
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      size="icon"
+                      className="absolute top-1 right-1 opacity-0 group-hover:opacity-100"
+                      onClick={() => removeImage(i)}
+                    >
+                      <X className="w-4 h-4" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Submit */}
+            <div className="flex gap-4 pt-6 border-t">
+              <Button type="submit" className="flex-1">
+                Update Tour
+              </Button>
+              <Link href="/dashboard">
+                <Button type="button" variant="outline">
+                  Cancel
+                </Button>
+              </Link>
+            </div>
+
+          </div>
+        </form>
       </div>
+    </div>
   );
 }
