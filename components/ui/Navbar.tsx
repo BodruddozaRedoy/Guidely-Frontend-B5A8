@@ -46,7 +46,7 @@ const Navbar = () => {
       case "GUIDE":
         return [{ href: "/dashboard", label: "Dashboard", icon: LayoutDashboard }];
       case "ADMIN":
-        return [{ href: "/admin", label: "Admin Dashboard", icon: LayoutDashboard }];
+        return [{ href: "/dashboard", label: "Admin Dashboard", icon: LayoutDashboard }];
       default:
         return [{ href: "/bookings", label: "My Bookings", icon: Heart }];
     }
@@ -110,7 +110,7 @@ const Navbar = () => {
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" className="gap-2 pl-2">
                     <Avatar className="h-8 w-8">
-                      <AvatarImage src={user?.avatar} />
+                      <AvatarImage src={user?.profilePic} />
                       <AvatarFallback className="bg-primary text-primary-foreground text-sm">
                         {user?.name?.[0]}
                       </AvatarFallback>
