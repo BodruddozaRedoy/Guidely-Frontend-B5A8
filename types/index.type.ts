@@ -84,7 +84,7 @@ export interface Tour {
   images: string[];
 
   // Optional/computed API data
-  rating?: number;
+  reviews?: number;
   totalReviews?: number;
   location?: string;
   featured?: boolean;

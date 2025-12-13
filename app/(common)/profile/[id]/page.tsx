@@ -120,7 +120,7 @@ export default function ProfilePage() {
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
-      <div className="bg-gradient-to-br from-primary/10 to-secondary/10">
+      <div className="bg-linear-to-br from-primary/10 to-secondary/10">
         <div className="container mx-auto px-4 py-12">
           <div className="flex flex-col md:flex-row items-start gap-8">
 
