@@ -8,12 +8,15 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import {
     Users, MapPin, Calendar, DollarSign, Search, Eye, Ban, CheckCircle,
-    XCircle, Clock, Edit, Trash2, TrendingUp, Shield, AlertTriangle
+    XCircle, Clock, Edit, Trash2, TrendingUp, Shield, AlertTriangle,
+    ToggleRight,
+    ToggleLeft
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
 
@@ -161,6 +164,32 @@ export default function AdminDashboard() {
         }
     };
 
+    const handleToggleTourStatus = async (tourId: string, currentStatus: boolean) => {
+        try {
+            const res = await fetch(`${BASE_URL}/api/listings/${tourId}/toggle`, {
+                method: "PATCH",
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                },
+            });
+
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.message || "Failed");
+
+            // update local state
+            setTours(prev =>
+                prev.map(t => t.id === tourId ? { ...t, isActive: !currentStatus } : t)
+            );
+
+            toast.success(
+                currentStatus ? "Tour deactivated" : "Tour activated"
+            );
+        } catch (error) {
+            toast.error("Could not update tour status");
+        }
+    };
+
+
     // -------------------------------------------------------
     // FILTERS
     // -------------------------------------------------------
@@ -246,6 +275,7 @@ export default function AdminDashboard() {
                         tourSearch={tourSearch}
                         setTourSearch={setTourSearch}
                         handleDeleteTour={handleDeleteTour}
+                        handleToggleTourStatus={handleToggleTourStatus}
                     />
                 </TabsContent>
 
@@ -309,9 +339,9 @@ const UsersTab = ({ users, userSearch, setUserSearch, getRoleBadge, handleBanUse
 
                     <div className="flex items-center gap-3">
                         {getRoleBadge(u.role)}
-                        <Button variant="outline" size="sm" className="text-destructive" onClick={() => handleBanUser(u.id)}>
+                        {/* <Button variant="outline" size="sm" className="text-destructive" onClick={() => handleBanUser(u.id)}>
                             Ban
-                        </Button>
+                        </Button> */}
                     </div>
                 </div>
             ))}
@@ -320,55 +350,70 @@ const UsersTab = ({ users, userSearch, setUserSearch, getRoleBadge, handleBanUse
 );
 
 // ========= TOURS TAB =========
-const ToursTab = ({ tours, tourSearch, setTourSearch, handleDeleteTour }: any) => (
-    <div className="bg-card rounded-2xl p-6 shadow-soft">
-        <div className="flex items-center justify-between mb-6">
-            <h2 className="font-display font-semibold text-xl">Tours ({tours.length})</h2>
-            <Input
-                placeholder="Search tours..."
-                value={tourSearch}
-                onChange={(e) => setTourSearch(e.target.value)}
-                className="w-64"
-            />
-        </div>
+const ToursTab = ({ tours, tourSearch, setTourSearch, handleDeleteTour, handleToggleTourStatus }: any) => {
+    const router = useRouter()
+    return (
+        <div className="bg-card rounded-2xl p-6 shadow-soft">
+            <div className="flex items-center justify-between mb-6">
+                <h2 className="font-display font-semibold text-xl">Tours ({tours.length})</h2>
+                <Input
+                    placeholder="Search tours..."
+                    value={tourSearch}
+                    onChange={(e) => setTourSearch(e.target.value)}
+                    className="w-64"
+                />
+            </div>
 
-        <div className="space-y-3">
-            {tours.map((t: any) => (
-                <div key={t.id} className="flex items-center justify-between p-4 bg-muted/50 rounded-xl">
-                    <div className="flex items-center gap-4">
-                        <Image
-                            src={t.images?.[0] ?? "/placeholder.jpg"}
-                            alt={t.title}
-                            width={70}
-                            height={50}
-                            className="object-cover rounded-md"
-                        />
-                        <div>
-                            <h3 className="font-medium">{t.title}</h3>
-                            <p className="text-xs text-muted-foreground">
-                                {t.city}, {t.country}
-                            </p>
+            <div className="space-y-3">
+                {tours.map((t: any) => (
+                    <div key={t.id} className="flex items-center justify-between p-4 bg-muted/50 rounded-xl">
+                        <div className="flex items-center gap-4">
+                            <Image
+                                src={t.images?.[0] ?? "/placeholder.jpg"}
+                                alt={t.title}
+                                width={70}
+                                height={50}
+                                className="object-cover rounded-md"
+                            />
+                            <div>
+                                <h3 className="font-medium">{t.title}</h3>
+                                <p className="text-xs text-muted-foreground">
+                                    {t.city}, {t.country}
+                                </p>
+                            </div>
+                        </div>
+
+                        <div className="flex gap-2">
+                            <Button onClick={() => router.push(`/tours/${t.id}`)} variant="outline" size="icon">
+                                <Eye className="w-4 h-4" />
+                            </Button>
+                            {/* <Button
+                                variant="outline"
+                                size="icon"
+                                className="text-destructive"
+                                onClick={() => handleDeleteTour(t.id)}
+                            >
+                                <Trash2 className="w-4 h-4" />
+                            </Button> */}
+                            <Button
+                                variant="outline"
+                                size="icon"
+                                onClick={() => handleToggleTourStatus(t.id, t.isActive)}
+                            >
+                                {t.isActive ? (
+                                    <ToggleRight className="w-4 h-4 text-secondary" />
+                                ) : (
+                                    <ToggleLeft className="w-4 h-4" />
+                                )}
+                            </Button>
+
                         </div>
                     </div>
-
-                    <div className="flex gap-2">
-                        <Button variant="outline" size="icon">
-                            <Eye className="w-4 h-4" />
-                        </Button>
-                        <Button
-                            variant="outline"
-                            size="icon"
-                            className="text-destructive"
-                            onClick={() => handleDeleteTour(t.id)}
-                        >
-                            <Trash2 className="w-4 h-4" />
-                        </Button>
-                    </div>
-                </div>
-            ))}
+                ))}
+            </div>
         </div>
-    </div>
-);
+    )
+};
 
 // ========= BOOKINGS TAB =========
 const BookingsTab = ({ bookings, bookingSearch, setBookingSearch, getStatusBadge, handleCancelBooking }: any) => (

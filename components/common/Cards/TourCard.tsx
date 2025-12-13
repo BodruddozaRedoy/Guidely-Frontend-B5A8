@@ -5,8 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useState } from "react";
 import Link from "next/link";
-import { Tour } from "@/types/index.type";
 import Image from "next/image";
+import { Tour } from "@/types/index.type";
 
 interface TourCardProps {
   tour: Tour;
@@ -16,6 +16,33 @@ interface TourCardProps {
 const TourCard = ({ tour, featured = false }: TourCardProps) => {
   const [isLiked, setIsLiked] = useState(false);
 
+  // ----------------------------
+  // NORMALIZE BACKEND + MOCK DATA
+  // ----------------------------
+  const price = tour.tourFee ?? 0;
+
+  const location =
+    tour.location ??
+    (tour.city && tour.country ? `${tour.city}, ${tour.country}` : "Unknown");
+
+  const duration =
+    // tour.duration ??
+    (tour.durationDays ? `${tour.durationDays} days` : "N/A");
+
+  const rating = tour.rating ?? 0;
+  const totalReviews = tour.totalReviews ?? 0;
+
+  const tourImages = tour.images?.length
+    ? tour.images
+    : ["/placeholder-tour.jpg"];
+
+  const guideAvatar =
+    // tour?.guide?.avatar ??
+    tour?.guide?.profilePic ??
+    "/placeholder-avatar.jpg";
+
+  const guideName = tour?.guide?.name ?? "Guide";
+
   return (
     <Link href={`/tours/${tour.id}`}>
       <div
@@ -24,16 +51,16 @@ const TourCard = ({ tour, featured = false }: TourCardProps) => {
         }`}
       >
         {/* Image */}
-        <div className="relative aspect-[4/3] overflow-hidden">
+        <div className="relative aspect-4/3 overflow-hidden">
           <Image
-            src={tour.images[0]}
+            src={tourImages[0]}
             alt={tour.title}
             fill
             className="object-cover group-hover:scale-110 transition-transform duration-700"
             sizes="(max-width: 768px) 100vw, 50vw"
           />
 
-          <div className="absolute inset-0 bg-gradient-to-t from-foreground/60 via-transparent to-transparent" />
+          <div className="absolute inset-0 bg-linear-to-t from-foreground/60 via-transparent to-transparent" />
 
           {/* Wishlist Button */}
           <Button
@@ -58,10 +85,10 @@ const TourCard = ({ tour, featured = false }: TourCardProps) => {
             {tour.category}
           </Badge>
 
-          {/* Price Tag */}
+          {/* Price */}
           <div className="absolute bottom-4 left-4">
             <span className="text-primary-foreground font-display font-bold text-2xl">
-              ${tour.price}
+              ${price}
             </span>
             <span className="text-primary-foreground/80 text-sm"> / person</span>
           </div>
@@ -69,21 +96,18 @@ const TourCard = ({ tour, featured = false }: TourCardProps) => {
 
         {/* Content */}
         <div className="p-5">
-          {/* Guide Info */}
+          {/* Guide */}
           {tour.guide && (
             <div className="flex items-center gap-2 mb-3">
               <Image
-                src={tour.guide.avatar}
-                alt={tour.guide.name}
+                src={guideAvatar}
+                alt={guideName}
                 width={32}
                 height={32}
                 className="rounded-full object-cover ring-2 ring-primary/20"
               />
               <span className="text-sm text-muted-foreground">
-                with{" "}
-                <span className="font-medium text-foreground">
-                  {tour.guide.name}
-                </span>
+                with <span className="font-medium text-foreground">{guideName}</span>
               </span>
             </div>
           )}
@@ -96,7 +120,7 @@ const TourCard = ({ tour, featured = false }: TourCardProps) => {
           {/* Location */}
           <div className="flex items-center gap-1 text-muted-foreground text-sm mb-3">
             <MapPin className="w-4 h-4" />
-            <span>{tour.location}</span>
+            <span>{location}</span>
           </div>
 
           {/* Meta */}
@@ -104,20 +128,20 @@ const TourCard = ({ tour, featured = false }: TourCardProps) => {
             <div className="flex items-center gap-4 text-sm text-muted-foreground">
               <span className="flex items-center gap-1">
                 <Clock className="w-4 h-4" />
-                {tour.duration}
+                {duration}
               </span>
 
               <span className="flex items-center gap-1">
                 <Users className="w-4 h-4" />
-                Up to {tour.maxGroupSize}
+                Up to {tour.maxGroupSize ?? "?"}
               </span>
             </div>
 
             <div className="flex items-center gap-1">
               <Star className="w-4 h-4 fill-accent text-accent" />
-              <span className="font-semibold">{tour.rating}</span>
+              <span className="font-semibold">{rating}</span>
               <span className="text-muted-foreground text-sm">
-                ({tour.totalReviews})
+                ({totalReviews})
               </span>
             </div>
           </div>
